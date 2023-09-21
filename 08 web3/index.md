@@ -111,4 +111,4 @@ web3.js는 사용자의 요청을 Ethereum 네트워크에 전달하는 "중개�
 - npm i solc@0.8.0
 
 // solc를 사용해서 코드 컴파일
-- npx solc --bin --abi ./test.sol
+- npx solc --bin --abi ./test.sol 
