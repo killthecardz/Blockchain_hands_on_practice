@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+</head>
+<body>
+    <ul id="Accounts"></ul>
+
+    <div>
+        <label for="">use Account</label><br>
+        <input type="text" id="useAccount"><br>
+        <label for="">use contract</label><br>
+        <textarea name="" id="contract" cols="30" rows="10"></textarea> <br>
+        <button id="sendTransactionBtn">컨트랙트 배포</button>
+
+        <div>카운트 앱</div>
+        <div id="counterValue"></div>
+        <button id="callBtn">조회</button>
+        <button id="sendBtn">증가</button>
+    </div>
+</body>
+<script>
+    // 네트워크 연결
+    // ganache === http://127.0.0.1:8545
+    const web3 = new Web3("http://127.0.0.1:8545")
+    // getAccount == 네트워크의 계정들 조회
+    web3.eth.getAccounts().then((data)=>{
+        let items = "";
+        data.forEach(async (i) =>{
+            // getBalance : wei 단위로 계정의 잔액 조회
+            const balance = await web3.eth.getBalance(i);
+
+            // 단위 변경 ETH 단위로 단위 변경
+            // fromWei : wei 단위를 ether 단위로 변경
+            const eth_balance = await web3.utils.fromWei(balance);
+            items += `<li>${i} : ${balance}</li>`
+            Accounts.innerHTML = items;
+        })
+    })
+    // 컨트랙트 배포
+    // 코드 배포
+    // npx solc --bin --abi 파일의 경로로
+    // 컨트랙트를 배포할 때 수수료를 지불할 컨트랙트 배포자 계정
+    // bin 컴파일된 컨트랙트 코드 내용
+    // 트랜잭션 생성
+    sendTransactionBtn.onclick = ()=>{
+        web3.eth.sendTransaction({
+            // 컨트랙트 배포자 계정
+            from : useAccount.value,
+            // gas 제한량
+            gas : "300000",
+            // 컴파일된 컨트랙트 바이트 코드
+            data : contract.value
+        }).then(console.log);
+        // 컨트랙트 배포후
+        // 트랜잭셕 처리가 되면
+        // 응답으로 컨트랙트 주소를 주는데 CA
+        // 컨트랙트 참조에 사용하는 주소 CA
+    }
+
+    // 배포한 컨트랙트 실행
+    // abi를 사용해서 컨트랙트 코드를 정의하고 실행
+    // interface
+    // 코드를 활성화 시켜서 사용할 때
+    // 정의한 구조대로 사용하기 위해서
+    const abi =[
+        // 생성자 함수
+        // inputs 매개변수 전달할 매개변수가 없으니까[]
+        // stateMutability === nonpayable 이더리움을 받지 않는 상태 전환 함수
+        // payable == 이더를 전달받을 수 있는 상태 변환 함수
+        // type == constructor 생성자 함수의 타입
+      { inputs: [], stateMutability: "nonpayable", type: "constructor" },
+      {
+
+         inputs: [], name: "getValue", outputs: [{ internalType: "uint256", name: "", type: "uint256" }], stateMutability: "view", type: "function" },
+      { inputs: [{ internalType: "uint256", name: "_value", type: "uint256" }], name: "setValue", outputs: [], stateMutability: "nonpayable", type: "function" },
+    ];
+
+    // 카운트의 값을 조회하는 함수
+    const getValue = async ()=>{
+        // encodeFunctionCall 16문자열을 반환
+        // 첫번째 매개변수 abi의 내용 실행시킬 함수의 interface
+        // 두번째 매개변수 함수에 전달할 매개변수 값.
+        // 컨트랙트 함수의 내용과 우리가 전달할 매개변수를 전달해서 해시코드로 변환
+        // EVM에서 실행을 시킨다
+        const getCodeHash = await web3.eth.abi.encodeFunctionCall(abi[1],[]);
+        console.log(getCodeHash);
+        // call 읽기 전용
+        // 원격 프로시저 호출 값을 조회
+        const data = await web3.eth.call({
+            to : "0x22e026aE6A2E96495D7927d85ba45d344718311b",
+            data : getCodeHash,
+        });
+        console.log(data);
+        const result = await web3.utils.toBN(data).toString(10);
+        console.log(result)
+        counterValue.innerHTML = result;
+        return parseInt(result);
+    };
+    //상태변수를 조회했고
+    getValue();
+
+    callBtn.onclick = getValue;
+    // setValue 상태변수 변경
+
+    const setValue = async () =>{
+        const _getvalue = await  getValue();
+        const setCodeHash  = await web3.eth.abi.encodeFunctionCall(abi[2],[_getvalue + 1]);
+        console.log(setCodeHash);
+        //0x34534534250000000000000000000000000000value
+        // 0000000000000000000000000000000 사이의 0의 값은 의미 없는 구분을 짓기 위해 사용
+
+        const tx = {
+            from : useAccount.value, //트랜잭션을 발생시키는 계정
+            to : "0x22e026aE6A2E96495D7927d85ba45d344718311b", // CA 계정 주소
+            data : setCodeHash,
+            gas : 500000,
+            gasPrice : 200000000,
+        }
+        const data = await web3.eth.sendTransaction(tx);
+        console.log(data);
+        getValue();
+    };
+
+    sendBtn.onclick = setValue;
+</script>
+</html>
